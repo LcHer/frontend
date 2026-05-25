@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { margin: 0; background: #f0f2f5; }
+
+        /* ── Login ── */
+        #loginPage {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+        }
+        #loginPage .card { width: 380px; border-radius: 16px; border: none; }
+
+
+        #appPage { display: none; min-height: 100vh; }
+
+        .sidebar {
+            width: 220px;
+            min-height: 100vh;
+            background: #1e3c72;
+            position: fixed;
+            top: 0; left: 0;
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+        }
+        .sidebar .brand {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0 20px 24px;
+            border-bottom: 1px solid rgba(255,255,255,.15);
+        }
+        .sidebar .brand small { display: block; font-weight: 400; font-size: .75rem; opacity: .6; }
+        .sidebar nav { flex: 1; padding-top: 12px; }
+        .sidebar nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            padding: 12px 20px;
+            font-size: .9rem;
+            transition: background .2s, color .2s;
+            cursor: pointer;
+        }
+        .sidebar nav a:hover  { background: rgba(255,255,255,.1); color: #fff; }
+        .sidebar nav a.active { background: rgba(255,255,255,.18); color: #fff; font-weight: 600; border-left: 3px solid #7eb3ff; }
+        .sidebar .logout-btn {
+            margin: 16px;
+            color: rgba(255,255,255,.7);
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.3);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        .sidebar .logout-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+        .main-content { margin-left: 220px; padding: 32px; }
+
+        .view { display: none; }
+        .view.active { display: block; }
+
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 320px; }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div id="loginPage">
+    <div class="card shadow-lg p-4">
+        <div class="text-center mb-4">
+            <h4 class="fw-bold mb-1">Inicia Sesion</h4>
+            <span class="badge bg-primary"></span>
+        </div>
+        <form id="loginForm">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Usuario</label>
+                <input type="text" id="loginUser" class="form-control" placeholder="admin" required autofocus>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Contraseña</label>
+                <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">Iniciar sesión</button>
+        </form>
+    </div>
+</div>
+
+
+<div id="appPage">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">
+            MENU
+            <small>Operaciones</small>
+        </div>
+        <nav>
+            <a id="menuRegistrar" onclick="mostrarVista('registrar')">
+                &#43; Registrar operación
+            </a>
+            <a id="menuCancelar" onclick="mostrarVista('cancelar')">
+                &#10005; Cancelar transacción
+            </a>
+            <a id="menuTransacciones" onclick="mostrarVista('transacciones')">
+                &#9776; Listar Transacciones
+            </a>
+        </nav>
+        <button class="logout-btn" onclick="cerrarSesion()">&#8592; Cerrar sesión</button>
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+
+        <!-- Vista: Registrar -->
+        <div id="vistaRegistrar" class="view">
+            <h4 class="fw-bold mb-4">Registrar Operación</h4>
+            <div class="card p-4" style="max-width:500px">
+                <form id="transaccionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Operación</label>
+                        <input type="text" id="txOperacion" class="form-control" placeholder="venta" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Importe</label>
+                        <input type="text" id="txImporte" class="form-control" placeholder="100.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cliente</label>
+                        <input type="text" id="txCliente" class="form-control" placeholder="Angel" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">
+                            Secreto <small class="text-muted">(se cifra con AES-256 antes de enviarse)</small>
+                        </label>
+                        <input type="text" id="txSecreto" class="form-control" placeholder="cualquier texto" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Enviar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Vista: Cancelar -->
+        <div id="vistaCancelar" class="view">
+            <h4 class="fw-bold mb-4">Cancelar Transacción</h4>
+            <div class="card p-4" style="max-width:500px">
+                <form id="cancelarForm">
+                    <div class="mb-3">
+                        <label class="form-label">ID de la transacción</label>
+                        <input type="number" id="cancelId" class="form-control" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Referencia</label>
+                        <input type="text" id="cancelReferencia" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">Cancelar transacción</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Vista: Transacciones -->
+        <div id="vistaTransacciones" class="view">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">Transacciones</h4>
+                <div class="d-flex gap-2">
+                    <select id="pageSize" class="form-select form-select-sm" style="width:auto">
+                        <option value="5">5 por página</option>
+                        <option value="10" selected>10 por página</option>
+                        <option value="20">20 por página</option>
+                    </select>
+                    <select id="sortField" class="form-select form-select-sm" style="width:auto">
+                        <option value="id">Ordenar por ID</option>
+                        <option value="operacion">Operación</option>
+                        <option value="cliente">Cliente</option>
+                        <option value="estatus">Estatus</option>
+                    </select>
+                    <select id="sortDir" class="form-select form-select-sm" style="width:auto">
+                        <option value="asc">ASC</option>
+                        <option value="desc">DESC</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="cargarTransacciones(0)">Buscar</button>
+                </div>
+            </div>
+            <div class="card p-3">
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm mb-0">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>ID</th><th>Operación</th><th>Importe</th>
+                            <th>Cliente</th><th>Referencia</th><th>Estatus</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tablaTransacciones"></tbody>
+                    </table>
+                </div>
+                <div id="paginacion" class="d-flex justify-content-center gap-2 mt-3"></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
